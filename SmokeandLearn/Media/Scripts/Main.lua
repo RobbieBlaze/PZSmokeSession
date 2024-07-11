@@ -34,6 +34,41 @@ local function increasePlayerStats(player)
     player:getStats():setThirst(player:getStats():getThirst() - 0.001)
 end
 
+-- Function to share skills among players in a session
+local function shareSkills(players)
+    local sharedSkills = {}
+
+    -- Collect skills from all players
+    for _, player in ipairs(players) do
+        for i = 0, PerkFactory.PerkList:size() - 1 do
+            local perk = PerkFactory.PerkList:get(i)
+            local perkName = perk:getName()
+            if not sharedSkills[perkName] then
+                sharedSkills[perkName] = {totalXP = 0, count = 0}
+            end
+            local perkLevel = player:getPerkLevel(perk)
+            local perkXP = player:getXp():getXP(perk)
+            sharedSkills[perkName].totalXP = sharedSkills[perkName].totalXP + perkXP
+            sharedSkills[perkName].count = sharedSkills[perkName].count + 1
+        end
+    end
+
+    -- Share average skills with all players
+    for _, player in ipairs(players) do
+        for i = 0, PerkFactory.PerkList:size() - 1 do
+            local perk = PerkFactory.PerkList:get(i)
+            local perkName = perk:getName()
+            if sharedSkills[perkName] then
+                local averageXP = sharedSkills[perkName].totalXP / sharedSkills[perkName].count
+                local currentXP = player:getXp():getXP(perk)
+                if currentXP < averageXP then
+                    player:getXp():setXPToLevel(perk, averageXP)
+                end
+            end
+        end
+    end
+end
+
 -- Function to check nearby players and form sessions
 local function checkAndGiveXP()
     local players = getOnlinePlayers()
@@ -71,6 +106,7 @@ local function checkAndGiveXP()
                 giveExperience(player)
                 increasePlayerStats(player)
             end
+            shareSkills(session)
         end
     end
 end
